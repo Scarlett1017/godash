@@ -1,10 +1,5 @@
-bin/**
-.DS_Store
-files/**
+files/
+*.m4s
+*.mp4
+*.txt
 godash
-goDASH
-logs/**
-pkg/**
-src/**
-go.sum
-output
