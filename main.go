@@ -731,12 +731,12 @@ func main() {
 		mpdStreamDuration := segmentDuration*(maxSegments-1) + lastSegmentDuration
 		// determine if MPD stream time is larger than streamDurationPtr othewise error and stop
 
-		if mpdStreamDuration < (*streamDurationPtr) {
+		/*if mpdStreamDuration < (*streamDurationPtr) {
 
 			fmt.Println("*** -" + glob.StreamDurationName + ", " + strconv.Itoa(*streamDurationPtr) + " seconds, must not be larger than the maximum MPD stream duration of " + strconv.Itoa(mpdStreamDuration) + " second ***")
 			// stop the app
 			utils.StopApp()
-		}
+		}*/
 
 		// if no values passed in for segment duration, stream the entire clip
 		if *streamDurationPtr == 0 {

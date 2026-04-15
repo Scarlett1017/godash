@@ -98,14 +98,13 @@ type MPD struct {
 	NS1schemaLocation     string `xml:"ns1:schemaLocation,attr"`
 	BaseURL               string `xml:"BaseURL"`
 
-	ServiceDescription	ServiceDescription `xml:"ServiceDescription"`
-
+	ServiceDescription ServiceDescription `xml:"ServiceDescription"`
 }
 
 // ProgramInformation in MPD
 type ServiceDescription struct {
-	XMLName         xml.Name `xml:"ServiceDescription"`
-	ID              int   `xml:"id,attr"`
+	XMLName xml.Name `xml:"ServiceDescription"`
+	ID      int      `xml:"id,attr"`
 }
 
 // ProgramInformation in MPD
@@ -147,13 +146,13 @@ type AdaptationSet struct {
 	MimeType                  string                    `xml:"mimeType,attr"`
 	StartWithSAP              int                       `xml:"startWithSAP,attr"`
 
-	FrameRate string    `xml:"frameRate,attr"`
+	FrameRate string `xml:"frameRate,attr"`
 	Height    string `xml:"height,attr"`
 	ScanType  string `xml:"scanType,attr"`
 	Width     int    `xml:"width,attr"`
 
-	StartWithSap              int                       `xml:"startWithSap,attr"`
-	ID                        string                    `xml:"id,attr"`
+	StartWithSap int    `xml:"startWithSap,attr"`
+	ID           string `xml:"id,attr"`
 }
 
 // Representation in MPD
@@ -959,7 +958,7 @@ func GetNextSegment(mpd MPD, SegNumber int, SegQUALITY int, currentMPDRepAdaptSe
 }
 
 // GetMPDheightIndex :
-//get the maximum index for a given resolution height in a provided MPD file
+// get the maximum index for a given resolution height in a provided MPD file
 func GetMPDheightIndex(mpd MPD, maxHeight int, currentMPDRepAdaptSet int, debugLog bool) int {
 
 	// define the maximum height index
@@ -990,6 +989,9 @@ func GetMPDheightIndex(mpd MPD, maxHeight int, currentMPDRepAdaptSet int, debugL
 	}
 
 	// return the maximum index for a given resolution height
+	if maxHeightIndex <= 0 {
+		return 0
+	}
 	return maxHeightIndex - 1
 }
 
@@ -1035,7 +1037,11 @@ func GetByteRangeSegmentDetails(mpd []MPD, mpdListIndex int, currentMPDRepAdaptS
 	}
 
 	// return the number of segments and segment duration
-	return streamDuration / segmentDurations[mpdListIndex], segmentDurations
+	numSegments := streamDuration / segmentDurations[mpdListIndex]
+	if numSegments <= 0 {
+		numSegments = 1
+	}
+	return numSegments, segmentDurations
 }
 
 // GetSegmentDetails :
@@ -1081,7 +1087,11 @@ func GetSegmentDetails(mpd []MPD, mpdListIndex int, adaptationSetIndex ...int) (
 	}
 
 	// return the number of segments and segment duration
-	return streamDuration / segmentDurations[mpdListIndex], segmentDurations
+	numSegments := streamDuration / segmentDurations[mpdListIndex]
+	if numSegments <= 0 {
+		numSegments = 1
+	}
+	return numSegments, segmentDurations
 }
 
 // SplitMPDSegmentDuration :
@@ -1137,16 +1147,15 @@ func SplitMPDSegmentDuration(mpdSegDuration string) int {
 		}
 		// get the seconds and convert to int
 		streamDuration = m[1]
-	} 
+	}
 
 	// split around the Seconds
 	if strings.Contains(streamDuration, "S") {
-
-		// get the seconds and convert to int
-		s := strings.Split(streamDuration, ".")
-		i2, err := strconv.Atoi(s[0])
+		s1 := strings.Replace(streamDuration, "S", "", -1)
+		s2 := strings.Split(s1, ".")[0]
+		i2, err := strconv.Atoi(s2)
 		if err != nil {
-			fmt.Println("*** Problem with converting segment seconds to int ***")
+			fmt.Printf("Warning: Atoi failed for seconds: %s\n", s2)
 		}
 		if i2 > 0 {
 			totalTimeinSeconds += i2

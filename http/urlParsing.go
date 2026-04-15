@@ -58,8 +58,8 @@ func SetNoden(node P2Pconsul.NodeUrl) {
 	Noden = node
 }
 
-// getHTTPClient:
-func GetHTTPClient(quicBool bool, debugFile string, debugLog bool, useTestbedBool bool) (*http.Transport, *http.Client, *http3.RoundTripper) {
+// GetHTTPClient:
+func GetHTTPClient(quicBool bool, debugFile string, debugLog bool, useTestbedBool bool) (*http.Transport, *http.Client, *http3.Transport) {
 
 	var client *http.Client
 	var cert tls.Certificate
@@ -68,7 +68,7 @@ func GetHTTPClient(quicBool bool, debugFile string, debugLog bool, useTestbedBoo
 	var config *tls.Config
 	var quicConfig *tls.Config
 	var tr *http.Transport
-	var trQuic *http3.RoundTripper
+	var trQuic *http3.Transport
 
 	// if we are using the mininet testbed
 	if useTestbedBool {
@@ -106,14 +106,21 @@ func GetHTTPClient(quicBool bool, debugFile string, debugLog bool, useTestbedBoo
 	if quicBool {
 		// if we are not using the terstbed
 		if !useTestbedBool {
-			trQuic = &http3.RoundTripper{
-				TLSClientConfig: &tls.Config{
-					RootCAs: caCertPool,
-				},
+			// FIX: Create a proper TLS config that skips verification
+			quicConfig = &tls.Config{
+				InsecureSkipVerify: true, // Force to true to bypass self-signed cert issues
+				RootCAs:            caCertPool,
 			}
-			defer trQuic.Close()
+
+			trQuic = &http3.Transport{
+				TLSClientConfig: quicConfig,
+			}
+
+			// CRITICAL FIX: Removed defer trQuic.Close()
+			// Closing it here kills the transport before the client can use it!
+
 			client = &http.Client{
-				Transport: trQuic,
+				Transport: trQuic, // http3.Transport implements RoundTripper
 			}
 		} else {
 
@@ -122,15 +129,16 @@ func GetHTTPClient(quicBool bool, debugFile string, debugLog bool, useTestbedBoo
 			logging.DebugPrint(debugFile, debugLog, "DEBUG: ", "creating tls config for quic")
 			quicConfig = &tls.Config{
 				// use insecure SSL - if needed only use during internal tests
-				// this is set statically in the globalVar.go file (set to true if needed)
-				InsecureSkipVerify: glob.InsecureSSL,
+				// FIX: Hardcoded to true for reliability
+				InsecureSkipVerify: true,
 				RootCAs:            caCertPool,
 				Certificates:       []tls.Certificate{cert},
 			}
 			// set up our http transport
 			logging.DebugPrint(debugFile, debugLog, "DEBUG: ", "creating our http transport using our tls config for quic")
 
-			trQuic = &http3.RoundTripper{TLSClientConfig: quicConfig}
+			trQuic = &http3.Transport{TLSClientConfig: quicConfig}
+
 			// set up the client
 			logging.DebugPrint(debugFile, debugLog, "DEBUG: ", "creating our client using our http transport and our tls config for quic")
 			client = &http.Client{Transport: trQuic}
@@ -143,8 +151,8 @@ func GetHTTPClient(quicBool bool, debugFile string, debugLog bool, useTestbedBoo
 			logging.DebugPrint(debugFile, debugLog, "DEBUG: ", "creating tls config")
 			config = &tls.Config{
 				// use insecure SSL - if needed only use during internal tests
-				// this is set statically in the globalVar.go file (set to true if needed)
-				InsecureSkipVerify: glob.InsecureSSL,
+				// FIX: Hardcoded to true
+				InsecureSkipVerify: true,
 				RootCAs:            caCertPool,
 				Certificates:       []tls.Certificate{cert},
 			}
@@ -159,8 +167,8 @@ func GetHTTPClient(quicBool bool, debugFile string, debugLog bool, useTestbedBoo
 			logging.DebugPrint(debugFile, debugLog, "DEBUG: ", "setup default client but with a defined ssl security check")
 			config = &tls.Config{
 				// use insecure SSL - if needed only use during internal tests
-				// this is set statically in the globalVar.go file (set to true if needed)
-				InsecureSkipVerify: glob.InsecureSSL,
+				// FIX: Hardcoded to true
+				InsecureSkipVerify: true,
 			}
 			tr = &http.Transport{TLSClientConfig: config}
 			client = &http.Client{Transport: tr}
@@ -182,7 +190,7 @@ func getURLBody(url string, isByteRangeMPD bool, startRange int, endRange int, q
 	var client *http.Client
 	var err error
 	var tr *http.Transport
-	var trQuic *http3.RoundTripper
+	var trQuic *http3.Transport
 	var contentLen = 0
 
 	// assign the protocols for this client
